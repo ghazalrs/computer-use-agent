@@ -68,7 +68,8 @@ def main(config: Config):
                     print("-" * 80 + "\n")
                 break
 
+def cli():
+    main(Config())
+
 if __name__ == "__main__":
-    # Load the configuration
-    config = Config()
-    main(config)
+    cli()

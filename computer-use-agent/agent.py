@@ -2,92 +2,77 @@ import argparse
 import json
 import sys
 
-from rich.console import Console
-from rich.prompt import Confirm
-
-from config import MODEL_ID, DEFAULT_MAX_STEPS, DEFAULT_TIMEOUT
+from config import Config
 from llm import LLMClient
-from shell import Shell
+from bash import Bash
 from tools import execute
-
-console = Console()
-
 
 def confirm_execution(cmd: str) -> bool:
     """Ask the user whether the suggested command should be executed."""
     return input(f"    ▶️   Execute '{cmd}'? [y/N]: ").strip().lower() == "y"
 
+def main(config: Config):
+    bash = Bash(config)
+    # The model
+    llm = LLM(config)
+    # The conversation history, with the system prompt
+    messages = Messages(config.system_prompt)
+    print("[INFO] Type 'quit' at any time to exit the agent loop.\n")
 
-def confirm_fn(prompt: str) -> bool:
-    return Confirm.ask(f"[yellow]{prompt}[/yellow]")
-
-
-def run_agent(goal: str, model: str, max_steps: int, timeout: int):
-    shell = Shell(timeout=timeout)
-    llm = LLMClient(model=model)
-
-    system_prompt = (
-        "You are an autonomous terminal agent. "
-        "Accomplish the user's goal by issuing tool calls one at a time. "
-        "When the goal is complete, respond with a plain text summary and no tool call."
-    )
-
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": f"Goal: {goal}\nCurrent directory: {shell.cwd}"},
-    ]
-
-    console.rule("[bold blue]Agent started")
-    console.print(f"[bold]Goal:[/bold] {goal}")
-    console.print(f"[dim]Model: {model}  Max steps: {max_steps}[/dim]\n")
-
-    for step in range(1, max_steps + 1):
-        console.rule(f"[dim]Step {step}")
-        msg = llm.complete(messages)
-
-        if not msg.tool_calls:
-            console.print(f"\n[green]Done:[/green] {msg.content}")
+    # The main agent loop
+    while True:
+        # Get user message.
+        user = input(f"['{bash.cwd}'] ").strip()
+        if user.lower() == "quit":
+            print("\n[🤖] Shutting down. Bye!\n")
             break
+        if not user:
+            continue
+        # Always tell the agent where the current working directory is to avoid confusions.
+        user += f"\n Current working directory: `{bash.cwd}`"
+        messages.add_user_message(user)
 
-        messages.append({"role": "assistant", "content": msg.content, "tool_calls": [
-            {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-            for tc in msg.tool_calls
-        ]})
+        # The tool-call/response loop
+        while True:
+            print("\n[🤖] Thinking...")
+            response, tool_calls = llm.query(messages, [bash.to_json_schema()])
 
-        for tc in msg.tool_calls:
-            name = tc.function.name
-            args = json.loads(tc.function.arguments)
+            if response:
+                response = response.strip()
+                # Do not store the thinking part to save context space
+                if "</think>" in response:
+                    response = response.split("</think>")[-1].strip()
 
-            console.print(f"[bold cyan]Tool:[/bold cyan] {name}")
-            console.print(f"[dim]{json.dumps(args, indent=2)}[/dim]")
+                # Add the (non-empty) response to the context
+                if response:
+                    messages.add_assistant_message(response)
 
-            result = execute(name, args, shell, confirm_fn)
+            # Process tool calls
+            if tool_calls:
+                for tc in tool_calls:
+                    function_name = tc.function.name
+                    function_args = json.loads(tc.function.arguments)
 
-            console.print(f"[dim]Result:[/dim]\n{result}\n")
+                    # Ensure it's calling the right tool
+                    if function_name != "exec_bash_command" or "cmd" not in function_args:
+                        tool_call_result = json.dumps({"error": "Incorrect tool or function argument"})
+                    else:
+                        command = function_args["cmd"]
+                        # Confirm execution with the user
+                        if confirm_execution(command):
+                            tool_call_result = bash.exec_bash_command(command)
+                        else:
+                            tool_call_result = {"error": "The user declined the execution of this command."}
 
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tc.id,
-                "content": result,
-            })
-    else:
-        console.print("[red]Max steps reached without completion.[/red]")
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Autonomous terminal agent powered by OpenRouter.")
-    parser.add_argument("goal", help="Natural language goal for the agent.")
-    parser.add_argument("--model", default=MODEL_ID, help="OpenRouter model ID.")
-    parser.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS)
-    parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="Per-command timeout in seconds.")
-    args = parser.parse_args()
-
-    try:
-        run_agent(args.goal, args.model, args.max_steps, args.timeout)
-    except KeyboardInterrupt:
-        console.print("\n[red]Aborted.[/red]")
-        sys.exit(1)
-
+                    messages.add_tool_message(tool_call_result, tc.id)
+            else:
+                # Display the assistant's message to the user.
+                if response:
+                    print(response)
+                    print("-" * 80 + "\n")
+                break
 
 if __name__ == "__main__":
-    main()
+    # Load the configuration
+    config = Config()
+    main(config)

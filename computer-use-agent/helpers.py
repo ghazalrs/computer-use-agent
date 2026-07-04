@@ -22,8 +22,23 @@ class Messages:
     def add_assistant_message(self, message):
         self.messages.append({"role": "assistant", "content": message})
 
+    def add_assistant_turn(self, content: str, tool_calls):
+        msg = {"role": "assistant", "content": content or ""}
+        if tool_calls:
+            msg["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                }
+                for tc in tool_calls
+            ]
+        self.messages.append(msg)
+
     def add_tool_message(self, message, id):
-        self.messages.append({"role": "tool", "content": str(message), "tool_call_id": id})
+        import json
+        content = json.dumps(message) if isinstance(message, dict) else str(message)
+        self.messages.append({"role": "tool", "content": content, "tool_call_id": id})
 
     def to_list(self) -> List[Dict[str, str]]:
         """

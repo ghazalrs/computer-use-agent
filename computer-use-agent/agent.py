@@ -39,11 +39,11 @@ def main(config: Config):
                 if "</think>" in response:
                     response = response.split("</think>")[-1].strip()
 
-                # Add the (non-empty) response to the context
-                if response:
-                    messages.add_assistant_message(response)
+            # Always record the assistant turn (text + tool calls) before executing
+            messages.add_assistant_turn(response or "", tool_calls)
 
             # Process tool calls
+            cancelled = False
             if tool_calls:
                 for tc in tool_calls:
                     function_name = tc.function.name
@@ -58,13 +58,15 @@ def main(config: Config):
                         if confirm_execution(command):
                             tool_call_result = bash.exec_bash_command(command)
                         else:
-                            tool_call_result = {"error": "The user declined the execution of this command."}
+                            print("Cancelled.\n")
+                            cancelled = True
+                            break
 
                     messages.add_tool_message(tool_call_result, tc.id)
-            else:
-                # Display the assistant's message to the user.
-                if response:
-                    print(response)
+
+            if cancelled or not tool_calls:
+                if not cancelled and response and response.strip():
+                    print(response.strip())
                     print("-" * 80 + "\n")
                 break
 

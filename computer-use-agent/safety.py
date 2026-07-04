@@ -1,32 +1,42 @@
-import re
-from pathlib import Path
+FORBIDDEN = [
+    "rm -rf",
+    "dd",
+    "mkfs",
+    "shutdown",
+    "reboot",
+    "halt",
+    "poweroff",
+    ":(){ :|:& };:",
+    "chmod -R 777 /",
+    "chown -R",
+    "> /dev/sda",
+]
 
-_SAFETY_MD = Path(__file__).parent / "safety.md"
-
-
-def _parse_safety_md() -> tuple[list[str], list[str]]:
-    text = _SAFETY_MD.read_text()
-    forbidden, risky = [], []
-    current = None
-    for line in text.splitlines():
-        lower = line.strip().lower()
-        if lower == "## forbidden":
-            current = forbidden
-        elif lower == "## risky":
-            current = risky
-        elif line.startswith("- ") and current is not None:
-            current.append(line[2:].strip())
-    return forbidden, risky
+RISKY = [
+    "rm",
+    "sudo",
+    "git push",
+    "git reset --hard",
+    "git clean",
+    "mv",
+    "chmod",
+    "chown",
+    "kill",
+    "pkill",
+    "curl",
+    "wget",
+    "pip install",
+    "npm install",
+]
 
 
 def check(command: str) -> tuple[str, str | None]:
     """Return ('ok'|'forbidden'|'risky', matched_pattern)."""
-    forbidden, risky = _parse_safety_md()
     cmd = command.strip()
-    for pattern in forbidden:
+    for pattern in FORBIDDEN:
         if cmd.startswith(pattern):
             return "forbidden", pattern
-    for pattern in risky:
+    for pattern in RISKY:
         if cmd.startswith(pattern):
             return "risky", pattern
     return "ok", None

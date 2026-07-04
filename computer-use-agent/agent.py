@@ -1,11 +1,7 @@
-import argparse
 import json
-import sys
-
 from config import Config
-from llm import LLMClient
+from helpers import Messages, LLM
 from bash import Bash
-from tools import execute
 
 def confirm_execution(cmd: str) -> bool:
     """Ask the user whether the suggested command should be executed."""

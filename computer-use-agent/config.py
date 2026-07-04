@@ -15,12 +15,11 @@ class Config:
     # LLM configuration
     #--------------------------------------
 
-    model_id = os.getenv("model_id", "anthropic/claude-sonnet-4-5")
+    openrouter_model_name = os.getenv("openrouter_model_name", "anthropic/claude-sonnet-4-5")
     openrouter_api_key = os.getenv("openrouter_api_key", "")
-    openrouter_base_url = "https://openrouter.ai/api/v1"
-
-    default_max_steps = 20
-    default_timeout = 30
+    openrouter_base_url = os.getenv("openrouter_base_url", "https://openrouter.ai/api/v1")
+    openrouter_temperature = float(os.getenv("openrouter_temperature", "1.0"))
+    openrouter_top_p = float(os.getenv("openrouter_top_p", "1.0"))
 
     # -------------------------------------
     # Agent configuration

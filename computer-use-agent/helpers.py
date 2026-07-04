@@ -38,9 +38,9 @@ class LLM:
 
     def __init__(self, config: Config):
         super().__init__()
-        self.client = OpenAI(base_url=config.llm_base_url, api_key=config.llm_api_key)
+        self.client = OpenAI(base_url=config.openrouter_base_url, api_key=config.openrouter_api_key)
         self.config = config
-        print(f"Using model '{config.llm_model_name}' from '{config.llm_base_url}'")
+        print(f"Using model '{config.openrouter_model_name}' from '{config.openrouter_base_url}'")
 
     def query(
         self,
@@ -49,11 +49,11 @@ class LLM:
         max_tokens=None,
     ) -> Tuple[str, List[Dict[str, Any]]]:
         completion = self.client.chat.completions.create(
-            model=self.config.llm_model_name,
+            model=self.config.openrouter_model_name,
             messages=messages.to_list(),
             tools=tools,
-            temperature=self.config.llm_temperature,
-            top_p=self.config.llm_top_p,
+            temperature=self.config.openrouter_temperature,
+            top_p=self.config.openrouter_top_p,
             max_tokens=max_tokens,
             stream=False
         )

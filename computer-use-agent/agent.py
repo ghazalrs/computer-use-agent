@@ -13,6 +13,11 @@ from tools import execute
 console = Console()
 
 
+def confirm_execution(cmd: str) -> bool:
+    """Ask the user whether the suggested command should be executed."""
+    return input(f"    ▶️   Execute '{cmd}'? [y/N]: ").strip().lower() == "y"
+
+
 def confirm_fn(prompt: str) -> bool:
     return Confirm.ask(f"[yellow]{prompt}[/yellow]")
 

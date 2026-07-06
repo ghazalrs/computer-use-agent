@@ -1,7 +1,10 @@
 import json
+from rich.console import Console
 from config import Config
 from helpers import Messages, LLM
 from bash import Bash
+
+console = Console()
 
 def confirm_execution(cmd: str) -> bool:
     """Ask the user whether the suggested command should be executed."""
@@ -30,8 +33,8 @@ def main(config: Config):
 
         # The tool-call/response loop
         while True:
-            print("\n[🤖] Thinking...")
-            response, tool_calls = llm.query(messages, [bash.to_json_schema()])
+            with console.status("[bold green]Thinking..."):
+                response, tool_calls = llm.query(messages, [bash.to_json_schema()])
 
             if response:
                 response = response.strip()

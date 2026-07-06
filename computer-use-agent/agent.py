@@ -8,6 +8,22 @@ from bash import Bash
 
 console = Console()
 
+BANNER = r"""
+                           _
+     /\                   | |
+    /  \   __ _  ___ _ __ | |_
+   / /\ \ / _` |/ _ \ '_ \| __|
+  / ____ \ (_| |  __/ | | | |_
+ /_/    \_\__, |\___|_| |_|\__|
+           __/ |
+          |___/
+"""
+
+def print_banner():
+    console.print(f"[bold green]{BANNER}[/bold green]")
+    console.print(Rule(style="dim"))
+    console.print()
+
 def confirm_execution(cmd: str) -> bool:
     console.print(f"\nbash [bold]{cmd}[/bold]")
     console.print(Rule(style="dim"))
@@ -20,12 +36,11 @@ def confirm_execution(cmd: str) -> bool:
     return choice == "Yes"
 
 def main(config: Config):
+    print_banner()
     bash = Bash(config)
-    # The model
     llm = LLM(config)
-    # The conversation history, with the system prompt
     messages = Messages(config.system_prompt)
-    print("Type 'quit' at any time to exit the agent loop.\n")
+    console.print("Type [bold]quit[/bold] at any time to exit.\n")
 
     # The main agent loop
     while True:

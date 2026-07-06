@@ -1,4 +1,6 @@
 import json
+import time
+import urllib.request
 import questionary
 from rich.console import Console
 from rich.rule import Rule
@@ -18,6 +20,19 @@ BANNER = r"""
            __/ |
           |___/
 """
+
+def fetch_cost(generation_id: str, api_key: str) -> str:
+    url = f"https://openrouter.ai/api/v1/generation?id={generation_id}"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {api_key}"})
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            cost = data.get("data", {}).get("total_cost")
+            if cost is not None:
+                return f"${cost:.4f}"
+    except Exception:
+        pass
+    return "n/a"
 
 def print_banner():
     console.print(f"[bold green]{BANNER}[/bold green]")
@@ -45,9 +60,9 @@ def main(config: Config):
     # The main agent loop
     while True:
         # Get user message.
-        user = input(f"['{bash.cwd}'] ").strip()
+        user = input("> ").strip()
         if user.lower() == "quit":
-            print("\n[🤖] Shutting down. Bye!\n")
+            print("\nShutting down. Bye!\n")
             break
         if not user:
             continue
@@ -57,8 +72,10 @@ def main(config: Config):
 
         # The tool-call/response loop
         while True:
+            start = time.time()
             with console.status("[bold green]Thinking..."):
-                response, tool_calls = llm.query(messages, [bash.to_json_schema()])
+                response, tool_calls, usage, generation_id = llm.query(messages, [bash.to_json_schema()])
+            elapsed = time.time() - start
 
             if response:
                 response = response.strip()
@@ -93,8 +110,9 @@ def main(config: Config):
 
             if cancelled or not tool_calls:
                 if not cancelled and response and response.strip():
-                    print(response.strip())
-                    print("-" * 80 + "\n")
+                    console.print(response.strip())
+                cost = fetch_cost(generation_id, config.openrouter_api_key)
+                console.print(f"\n[dim]✓  Credits: {cost} • Time: {elapsed:.1f}s[/dim]\n")
                 break
 
 def cli():

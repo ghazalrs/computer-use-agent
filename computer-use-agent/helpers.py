@@ -62,7 +62,7 @@ class LLM:
         messages: Messages,
         tools: List[Dict[str, Any]],
         max_tokens=None,
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, Any]], Any]:
         completion = self.client.chat.completions.create(
             model=self.config.openrouter_model_name,
             messages=messages.to_list(),
@@ -76,4 +76,6 @@ class LLM:
         return (
             completion.choices[0].message.content,
             completion.choices[0].message.tool_calls or [],
+            completion.usage,
+            completion.id,
         )

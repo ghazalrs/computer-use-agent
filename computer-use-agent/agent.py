@@ -1,5 +1,7 @@
 import json
+import questionary
 from rich.console import Console
+from rich.rule import Rule
 from config import Config
 from helpers import Messages, LLM
 from bash import Bash
@@ -7,8 +9,15 @@ from bash import Bash
 console = Console()
 
 def confirm_execution(cmd: str) -> bool:
-    """Ask the user whether the suggested command should be executed."""
-    return input(f"    ▶️   Execute '{cmd}'? [y/N]: ").strip().lower() == "y"
+    console.print(f"\nbash [bold]{cmd}[/bold]")
+    console.print(Rule(style="dim"))
+    choice = questionary.select(
+        "bash requires approval",
+        choices=["Yes", "No"],
+        qmark="",
+        style=questionary.Style([("selected", "fg:green bold"), ("pointer", "fg:green bold")]),
+    ).ask()
+    return choice == "Yes"
 
 def main(config: Config):
     bash = Bash(config)
@@ -16,7 +25,7 @@ def main(config: Config):
     llm = LLM(config)
     # The conversation history, with the system prompt
     messages = Messages(config.system_prompt)
-    print("[INFO] Type 'quit' at any time to exit the agent loop.\n")
+    print("Type 'quit' at any time to exit the agent loop.\n")
 
     # The main agent loop
     while True:

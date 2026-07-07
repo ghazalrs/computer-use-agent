@@ -1,6 +1,5 @@
 import json
 import time
-import urllib.request
 import questionary
 from rich.console import Console
 from rich.rule import Rule
@@ -20,19 +19,6 @@ BANNER = r"""
            __/ |
           |___/
 """
-
-def fetch_cost(generation_id: str, api_key: str) -> str:
-    url = f"https://openrouter.ai/api/v1/generation?id={generation_id}"
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {api_key}"})
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read())
-            cost = data.get("data", {}).get("total_cost")
-            if cost is not None:
-                return f"${cost:.4f}"
-    except Exception:
-        pass
-    return "n/a"
 
 def print_banner():
     console.print(f"[bold cyan]{BANNER}[/bold cyan]")
@@ -56,18 +42,16 @@ def main(config: Config):
     llm = LLM(config)
     messages = Messages(config.system_prompt)
     console.print("Type [bold cyan]quit[/bold cyan] at any time to exit.\n")
+    console.print(f"You're currently in [bold cyan]{bash.cwd}[/bold cyan]\n")
 
     # The main agent loop
     while True:
-        # Get user message.
-        console.print(f"You're currently in [bold cyan]{bash.cwd}[/bold cyan]")
         user = input("> ").strip()
         if user.lower() == "quit":
             print("\nShutting down. Bye!\n")
             break
         if not user:
             continue
-        # Always tell the agent where the current working directory is to avoid confusions.
         user += f"\n Current working directory: `{bash.cwd}`"
         messages.add_user_message(user)
 
@@ -75,12 +59,11 @@ def main(config: Config):
         while True:
             start = time.time()
             with console.status("[bold cyan]Thinking...", spinner_style="cyan"):
-                response, tool_calls, usage, generation_id = llm.query(messages, [bash.to_json_schema()])
+                response, tool_calls, usage = llm.query(messages, [bash.to_json_schema()])
             elapsed = time.time() - start
 
             if response:
                 response = response.strip()
-                # Do not store the thinking part to save context space
                 if "</think>" in response:
                     response = response.split("</think>")[-1].strip()
 
@@ -114,8 +97,9 @@ def main(config: Config):
             if not tool_calls:
                 if response and response.strip():
                     console.print(response.strip())
-                cost = fetch_cost(generation_id, config.openrouter_api_key)
-                console.print(f"\n[dim]✓  Credits: {cost} • Time: {elapsed:.1f}s[/dim]\n")
+                raw_cost = getattr(usage, "cost", None)
+                cost = f"${raw_cost:.5f}" if raw_cost is not None else "n/a"
+                console.print(f"\n[dim]✓  Credits: {cost} • Time: {elapsed:.1f}s[/dim]\n", highlight=False)
                 break
 
 def cli():

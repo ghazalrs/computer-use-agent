@@ -55,7 +55,7 @@ class LLM:
         super().__init__()
         self.client = OpenAI(base_url=config.openrouter_base_url, api_key=config.openrouter_api_key)
         self.config = config
-        print(f"Using model '{config.openrouter_model_name}' from '{config.openrouter_base_url}'")
+        print(f"Using model {config.openrouter_model_name} from {config.openrouter_base_url}")
 
     def query(
         self,
@@ -77,5 +77,4 @@ class LLM:
             completion.choices[0].message.content,
             completion.choices[0].message.tool_calls or [],
             completion.usage,
-            completion.id,
         )

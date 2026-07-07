@@ -88,32 +88,34 @@ def main(config: Config):
             messages.add_assistant_turn(response or "", tool_calls)
 
             # Process tool calls
-            cancelled = False
+            declined = False
             if tool_calls:
                 for tc in tool_calls:
                     function_name = tc.function.name
                     function_args = json.loads(tc.function.arguments)
 
-                    # Ensure it's calling the right tool
                     if function_name != "exec_bash_command" or "cmd" not in function_args:
-                        tool_call_result = json.dumps({"error": "Incorrect tool or function argument"})
+                        tool_call_result = {"error": "Incorrect tool or function argument"}
                     else:
                         command = function_args["cmd"]
-                        # Confirm execution with the user
                         if confirm_execution(command):
                             tool_call_result = bash.exec_bash_command(command)
                         else:
-                            print("Rejected\n")
-                            cancelled = True
+                            messages.add_tool_message(
+                                {"error": "The user declined this command. Acknowledge the rejection and offer alternatives."},
+                                tc.id,
+                            )
+                            declined = True
                             break
 
-                    messages.add_tool_message(tool_call_result, tc.id)
+                    if not declined:
+                        messages.add_tool_message(tool_call_result, tc.id)
 
-            if cancelled or not tool_calls:
-                if not cancelled and response and response.strip():
+            if not tool_calls:
+                if response and response.strip():
                     console.print(response.strip())
-                credits = getattr(usage, "total_tokens", 0)
-                console.print(f"\n[dim]✓  Credits: {credits} • Time: {elapsed:.1f}s[/dim]\n")
+                cost = fetch_cost(generation_id, config.openrouter_api_key)
+                console.print(f"\n[dim]✓  Credits: {cost} • Time: {elapsed:.1f}s[/dim]\n")
                 break
 
 def cli():

@@ -35,7 +35,7 @@ def fetch_cost(generation_id: str, api_key: str) -> str:
     return "n/a"
 
 def print_banner():
-    console.print(f"[bold green]{BANNER}[/bold green]")
+    console.print(f"[bold cyan]{BANNER}[/bold cyan]")
     console.print(Rule(style="dim"))
     console.print()
 
@@ -46,7 +46,7 @@ def confirm_execution(cmd: str) -> bool:
         "bash requires approval",
         choices=["Yes", "No"],
         qmark="",
-        style=questionary.Style([("selected", "fg:green bold"), ("pointer", "fg:green bold")]),
+        style=questionary.Style([("selected", "fg:cyan bold"), ("pointer", "fg:cyan bold")]),
     ).ask()
     return choice == "Yes"
 
@@ -55,11 +55,12 @@ def main(config: Config):
     bash = Bash(config)
     llm = LLM(config)
     messages = Messages(config.system_prompt)
-    console.print("Type [bold]quit[/bold] at any time to exit.\n")
+    console.print("Type [bold cyan]quit[/bold cyan] at any time to exit.\n")
 
     # The main agent loop
     while True:
         # Get user message.
+        console.print(f"You're currently in [bold cyan]{bash.cwd}[/bold cyan]")
         user = input("> ").strip()
         if user.lower() == "quit":
             print("\nShutting down. Bye!\n")
@@ -73,7 +74,7 @@ def main(config: Config):
         # The tool-call/response loop
         while True:
             start = time.time()
-            with console.status("[bold green]Thinking..."):
+            with console.status("[bold cyan]Thinking...", spinner_style="cyan"):
                 response, tool_calls, usage, generation_id = llm.query(messages, [bash.to_json_schema()])
             elapsed = time.time() - start
 
@@ -102,7 +103,7 @@ def main(config: Config):
                         if confirm_execution(command):
                             tool_call_result = bash.exec_bash_command(command)
                         else:
-                            print("Cancelled.\n")
+                            print("Rejected\n")
                             cancelled = True
                             break
 
@@ -111,8 +112,8 @@ def main(config: Config):
             if cancelled or not tool_calls:
                 if not cancelled and response and response.strip():
                     console.print(response.strip())
-                cost = fetch_cost(generation_id, config.openrouter_api_key)
-                console.print(f"\n[dim]✓  Credits: {cost} • Time: {elapsed:.1f}s[/dim]\n")
+                credits = getattr(usage, "total_tokens", 0)
+                console.print(f"\n[dim]✓  Credits: {credits} • Time: {elapsed:.1f}s[/dim]\n")
                 break
 
 def cli():

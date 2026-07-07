@@ -6,6 +6,7 @@ from rich.rule import Rule
 from config import Config
 from helpers import Messages, LLM
 from bash import Bash
+from tools import TOOLS, execute
 
 console = Console()
 
@@ -59,7 +60,7 @@ def main(config: Config):
         while True:
             start = time.time()
             with console.status("[bold cyan]Thinking...", spinner_style="cyan"):
-                response, tool_calls, usage = llm.query(messages, [bash.to_json_schema()])
+                response, tool_calls, usage = llm.query(messages, TOOLS)
             elapsed = time.time() - start
 
             if response:
@@ -77,19 +78,17 @@ def main(config: Config):
                     function_name = tc.function.name
                     function_args = json.loads(tc.function.arguments)
 
-                    if function_name != "exec_bash_command" or "cmd" not in function_args:
-                        tool_call_result = {"error": "Incorrect tool or function argument"}
-                    else:
-                        command = function_args["cmd"]
-                        if confirm_execution(command):
-                            tool_call_result = bash.exec_bash_command(command)
-                        else:
+                    needs_confirmation = function_name == "exec_bash_command" or function_name == "write_file"
+                    if needs_confirmation:
+                        label = function_args.get("cmd") or function_args.get("path", "")
+                        if not confirm_execution(label):
                             messages.add_tool_message(
                                 {"error": "The user declined this command. Acknowledge the rejection and offer alternatives."},
                                 tc.id,
                             )
                             declined = True
                             break
+                    tool_call_result = execute(function_name, function_args, bash)
 
                     if not declined:
                         messages.add_tool_message(tool_call_result, tc.id)

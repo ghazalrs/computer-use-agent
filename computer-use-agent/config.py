@@ -50,7 +50,10 @@ command is executed. Take that into account for the next conversation.
 If there was an error during execution, tell the user what that error was exactly.
 Do not repeat or echo the current working directory in your responses — it is already shown to the user by the interface.
 
-You are only allowed to execute the following commands. Break complex tasks into shorter commands from this list:
+You also have access to a `read_file` tool that reads the full contents of any file by path — use it instead of `cat` when you need to read a file.
+You have a `write_file` tool that writes content to a file, creating it if needed — use it instead of `echo` or shell redirection when you need to write a file.
+
+You are only allowed to execute the following bash commands. Break complex tasks into shorter commands from this list:
 
 ```
 {self.allowed_commands}

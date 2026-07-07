@@ -17,4 +17,4 @@ dependencies = [
 agent = "agent:cli"
 
 [tool.setuptools]
-py-modules = ["agent", "bash", "helpers", "config"]
+py-modules = ["agent", "bash", "helpers", "config", "tools"]
